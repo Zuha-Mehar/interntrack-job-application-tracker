@@ -1,3 +1,8 @@
+## Live Demo
+
+[View InternTrack Live] 
+https://interntrack-job-application-tracker.vercel.app/
+
 # InternTrack – Smart Job Application Tracker
 
 InternTrack is a modern job and internship application tracker built with Next.js, TypeScript, and Tailwind CSS. It helps users organize applications, track interview progress, manage reminders, analyze skills, and view job search performance through a clean dashboard.

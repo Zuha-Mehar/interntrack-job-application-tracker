@@ -4,6 +4,10 @@ import DashboardLayout from "../../components/DashboardLayout";
 import { getProfile, saveProfile } from "../../lib/profileStorage";
 import type { UserProfile } from "../../types";
 import {
+  clearApplications,
+  resetDemoApplications,
+} from "../../lib/applicationApi";
+import {
   Globe,
   Mail,
   MapPin,
@@ -47,36 +51,41 @@ export default function SettingsPage() {
     alert("Profile saved successfully!");
   }
 
-  function handleResetDemoData() {
-    const confirmReset = confirm(
-      "This will reset applications and reminders to demo data. Continue?"
+  async function handleResetDemoData() {
+    const confirmReset = window.confirm(
+      "This will replace all current database applications with demo applications. Continue?",
     );
 
     if (!confirmReset) {
       return;
     }
 
-    localStorage.removeItem("interntrack_applications");
-    localStorage.removeItem("interntrack_reminders");
-
-    alert("Demo data has been reset.");
-    window.location.reload();
+    try {
+      await resetDemoApplications();
+      alert("Demo applications reset successfully.");
+      window.location.reload();
+    } catch {
+      alert("Failed to reset demo applications.");
+    }
   }
 
-  function handleClearAllData() {
-    const confirmClear = confirm(
-      "This will delete all applications and reminders. Continue?"
+  async function handleClearAllData() {
+    const confirmClear = window.confirm(
+      "This will permanently delete all applications from your database. Continue?",
     );
 
     if (!confirmClear) {
       return;
     }
 
-    localStorage.setItem("interntrack_applications", JSON.stringify([]));
-    localStorage.setItem("interntrack_reminders", JSON.stringify([]));
-
-    alert("All applications and reminders have been cleared.");
-    window.location.reload();
+    try {
+      await clearApplications();
+      localStorage.removeItem("interntrack_reminders");
+      alert("All applications cleared successfully.");
+      window.location.reload();
+    } catch {
+      alert("Failed to clear applications.");
+    }
   }
 
   return (
@@ -190,9 +199,7 @@ export default function SettingsPage() {
           </form>
 
           <div className="mt-8 rounded-2xl border border-red-500/20 bg-red-500/10 p-5">
-            <h3 className="text-lg font-semibold text-red-300">
-              Danger Zone
-            </h3>
+            <h3 className="text-lg font-semibold text-red-300">Danger Zone</h3>
 
             <p className="mt-2 text-sm text-slate-400">
               Reset demo data or clear your saved applications and reminders.

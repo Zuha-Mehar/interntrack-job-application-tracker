@@ -1,17 +1,19 @@
 "use client";
 
-import DashboardLayout from "../../components/DashboardLayout";
-import { getApplications } from "../../lib/applicationStorage";
-import type { ApplicationStatus, JobApplication } from "../../types";
+import { useEffect, useMemo, useState } from "react";
 import {
   BarChart3,
   Briefcase,
   CheckCircle2,
+  Loader2,
   PieChart,
   TrendingUp,
   Users,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import DashboardLayout from "../../components/DashboardLayout";
+import StatusBadge from "../../components/StatusBadge";
+import { getApplications } from "../../lib/applicationApi";
+import type { ApplicationStatus, JobApplication } from "../../types";
 
 const statuses: ApplicationStatus[] = [
   "Applied",
@@ -21,270 +23,39 @@ const statuses: ApplicationStatus[] = [
   "Rejected",
 ];
 
-const statusColors: Record<ApplicationStatus, string> = {
-  Applied: "bg-blue-500",
-  Shortlisted: "bg-yellow-500",
-  Interview: "bg-purple-500",
-  Offer: "bg-green-500",
-  Rejected: "bg-red-500",
-};
+const months = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
 
-export default function AnalyticsPage() {
-  const [applications, setApplications] = useState<JobApplication[]>([]);
+function getMonthFromDate(dateValue: string) {
+  const date = new Date(dateValue);
 
-  useEffect(() => {
-    const savedApplications = getApplications();
-    setApplications(savedApplications);
-  }, []);
+  if (!Number.isNaN(date.getTime())) {
+    return months[date.getMonth()];
+  }
 
-  const totalApplications = applications.length;
+  const parts = dateValue.split(" ");
+  const possibleMonth = parts[1];
 
-  const interviews = applications.filter(
-    (app) => app.status === "Interview",
-  ).length;
+  if (months.includes(possibleMonth)) {
+    return possibleMonth;
+  }
 
-  const offers = applications.filter((app) => app.status === "Offer").length;
-
-  const rejections = applications.filter(
-    (app) => app.status === "Rejected",
-  ).length;
-
-  const responses = applications.filter(
-    (app) => app.status !== "Applied",
-  ).length;
-
-  const interviewRate =
-    totalApplications === 0
-      ? 0
-      : Math.round((interviews / totalApplications) * 100);
-
-  const offerRate =
-    totalApplications === 0
-      ? 0
-      : Math.round((offers / totalApplications) * 100);
-
-  const responseRate =
-    totalApplications === 0
-      ? 0
-      : Math.round((responses / totalApplications) * 100);
-
-  const rejectionRate =
-    totalApplications === 0
-      ? 0
-      : Math.round((rejections / totalApplications) * 100);
-
-  const statusData = statuses.map((status) => ({
-    label: status,
-    count: applications.filter((app) => app.status === status).length,
-    color: statusColors[status],
-  }));
-
-  const monthlyApplications = getMonthlyApplications(applications);
-
-  const maxMonthlyCount =
-    monthlyApplications.length === 0
-      ? 1
-      : Math.max(...monthlyApplications.map((item) => item.count));
-
-  return (
-    <DashboardLayout>
-      <div className="mb-8">
-        <p className="mb-2 text-sm font-medium text-indigo-300">
-          Performance Analytics
-        </p>
-
-        <h1 className="text-2xl font-bold md:text-3xl">Analytics</h1>
-
-        <p className="mt-2 text-sm text-slate-400">
-          Understand your application performance, response rate, and progress.
-        </p>
-      </div>
-
-      <section className="mb-8 grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
-        <AnalyticsStatCard
-          title="Total Applications"
-          value={totalApplications}
-          description="Applications saved"
-          icon={<Briefcase size={22} />}
-        />
-
-        <AnalyticsStatCard
-          title="Response Rate"
-          value={`${responseRate}%`}
-          description={`${responses} applications got response`}
-          icon={<TrendingUp size={22} />}
-        />
-
-        <AnalyticsStatCard
-          title="Interview Rate"
-          value={`${interviewRate}%`}
-          description={`${interviews} interview stage`}
-          icon={<Users size={22} />}
-        />
-
-        <AnalyticsStatCard
-          title="Offer Rate"
-          value={`${offerRate}%`}
-          description={`${offers} successful offers`}
-          icon={<CheckCircle2 size={22} />}
-        />
-      </section>
-
-      <section className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-6 xl:col-span-2">
-          <div className="mb-6 flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-500/20 text-indigo-300">
-              <BarChart3 size={22} />
-            </div>
-
-            <div>
-              <h2 className="text-lg font-semibold">Applications Over Time</h2>
-
-              <p className="text-sm text-slate-400">
-                Monthly view of your saved applications.
-              </p>
-            </div>
-          </div>
-
-          {monthlyApplications.length === 0 ? (
-            <EmptyState message="No application data available yet." />
-          ) : (
-            <div className="flex h-72 items-end gap-4 rounded-2xl border border-white/10 bg-[#07111f] px-5 pb-5 pt-8">
-              {monthlyApplications.map((item) => {
-                const height = (item.count / maxMonthlyCount) * 100;
-
-                return (
-                  <div
-                    key={item.month}
-                    className="flex h-full flex-1 flex-col items-center justify-end gap-3"
-                  >
-                    <span className="text-xs text-slate-400">{item.count}</span>
-
-                    <div className="flex h-48 w-full items-end">
-                      <div
-                        className="mx-auto w-10 rounded-t-xl bg-indigo-500 transition-all md:w-14"
-                        style={{ height: `${height}%` }}
-                      />
-                    </div>
-
-                    <span className="text-xs text-slate-500">{item.month}</span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
-          <div className="mb-6 flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-500/20 text-indigo-300">
-              <PieChart size={22} />
-            </div>
-
-            <div>
-              <h2 className="text-lg font-semibold">Status Distribution</h2>
-
-              <p className="text-sm text-slate-400">
-                Applications by current status.
-              </p>
-            </div>
-          </div>
-
-          {totalApplications === 0 ? (
-            <EmptyState message="No applications to analyze yet." />
-          ) : (
-            <div>
-              <div className="mx-auto mb-8 flex h-40 w-40 items-center justify-center rounded-full border-[28px] border-indigo-500 bg-[#07111f]">
-                <div className="text-center">
-                  <p className="text-3xl font-bold">{totalApplications}</p>
-                  <p className="text-xs text-slate-400">Total</p>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                {statusData.map((status) => {
-                  const percentage =
-                    totalApplications === 0
-                      ? 0
-                      : Math.round((status.count / totalApplications) * 100);
-
-                  return (
-                    <div key={status.label}>
-                      <div className="mb-2 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <span
-                            className={`h-3 w-3 rounded-full ${status.color}`}
-                          />
-
-                          <span className="text-sm text-slate-300">
-                            {status.label}
-                          </span>
-                        </div>
-
-                        <span className="text-sm text-slate-400">
-                          {percentage}% ({status.count})
-                        </span>
-                      </div>
-
-                      <div className="h-2 rounded-full bg-white/10">
-                        <div
-                          className={`h-2 rounded-full ${status.color}`}
-                          style={{ width: `${percentage}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-      </section>
-
-      <section className="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
-          <h2 className="text-lg font-semibold">Quick Summary</h2>
-
-          <p className="mt-1 text-sm text-slate-400">
-            A simple summary of your job search performance.
-          </p>
-
-          <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
-            <SummaryBox label="Applications" value={totalApplications} />
-            <SummaryBox label="Responses" value={responses} />
-            <SummaryBox label="Interviews" value={interviews} />
-            <SummaryBox label="Offers" value={offers} />
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/10 p-6">
-          <h2 className="text-lg font-semibold text-indigo-100">Insights</h2>
-
-          <div className="mt-5 space-y-4">
-            <InsightItem
-              title="Response Rate"
-              description={`Your response rate is ${responseRate}%. Try improving your resume and applying to more relevant roles.`}
-            />
-
-            <InsightItem
-              title="Interview Rate"
-              description={`Your interview rate is ${interviewRate}%. Track which skills appear in interview-stage applications.`}
-            />
-
-            <InsightItem
-              title="Rejection Rate"
-              description={`Your rejection rate is ${rejectionRate}%. Use rejected applications to improve future applications.`}
-            />
-          </div>
-        </div>
-      </section>
-    </DashboardLayout>
-  );
+  return "Unknown";
 }
 
 function getMonthlyApplications(applications: JobApplication[]) {
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"];
-
   const monthCounts: Record<string, number> = {
     Jan: 0,
     Feb: 0,
@@ -292,6 +63,12 @@ function getMonthlyApplications(applications: JobApplication[]) {
     Apr: 0,
     May: 0,
     Jun: 0,
+    Jul: 0,
+    Aug: 0,
+    Sep: 0,
+    Oct: 0,
+    Nov: 0,
+    Dec: 0,
   };
 
   applications.forEach((application) => {
@@ -308,78 +85,327 @@ function getMonthlyApplications(applications: JobApplication[]) {
   }));
 }
 
-function getMonthFromDate(dateString: string) {
-  const parts = dateString.split(" ");
+export default function AnalyticsPage() {
+  const [applications, setApplications] = useState<JobApplication[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  if (parts.length >= 2) {
-    return parts[1];
+  async function loadApplications() {
+    try {
+      setIsLoading(true);
+      setError("");
+
+      const data = await getApplications();
+      setApplications(data);
+    } catch {
+      setError("Failed to load analytics data from database.");
+    } finally {
+      setIsLoading(false);
+    }
   }
 
-  return "Unknown";
+  useEffect(() => {
+    loadApplications();
+  }, []);
+
+  const totalApplications = applications.length;
+
+  const responses = applications.filter(
+    (application) => application.status !== "Applied"
+  ).length;
+
+  const interviews = applications.filter(
+    (application) => application.status === "Interview"
+  ).length;
+
+  const offers = applications.filter(
+    (application) => application.status === "Offer"
+  ).length;
+
+  const responseRate =
+    totalApplications > 0 ? Math.round((responses / totalApplications) * 100) : 0;
+
+  const interviewRate =
+    totalApplications > 0
+      ? Math.round((interviews / totalApplications) * 100)
+      : 0;
+
+  const offerRate =
+    totalApplications > 0 ? Math.round((offers / totalApplications) * 100) : 0;
+
+  const statusDistribution = useMemo(() => {
+    return statuses.map((status) => ({
+      status,
+      count: applications.filter((application) => application.status === status)
+        .length,
+    }));
+  }, [applications]);
+
+  const monthlyApplications = useMemo(() => {
+    return getMonthlyApplications(applications);
+  }, [applications]);
+
+  const maxMonthlyCount = Math.max(
+    ...monthlyApplications.map((item) => item.count),
+    1
+  );
+
+  const maxStatusCount = Math.max(
+    ...statusDistribution.map((item) => item.count),
+    1
+  );
+
+  return (
+    <DashboardLayout>
+      <div className="space-y-8">
+        <section className="rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950 p-6 shadow-2xl">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-sm font-medium text-indigo-300">
+                Analytics
+              </p>
+              <h1 className="mt-2 text-3xl font-bold text-white">
+                Job search performance
+              </h1>
+              <p className="mt-3 max-w-2xl text-sm text-slate-400">
+                View response rates, application trends, and status breakdowns
+                from your PostgreSQL database.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <BarChart3 className="text-indigo-300" size={30} />
+            </div>
+          </div>
+        </section>
+
+        {isLoading && (
+          <div className="flex items-center justify-center gap-3 rounded-3xl border border-white/10 bg-slate-900/80 p-8 text-slate-400">
+            <Loader2 className="animate-spin" size={20} />
+            Loading analytics from database...
+          </div>
+        )}
+
+        {error && (
+          <div className="rounded-3xl border border-red-500/20 bg-red-500/10 p-5 text-sm text-red-300">
+            {error}
+          </div>
+        )}
+
+        {!isLoading && !error && (
+          <>
+            <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+              <AnalyticsCard
+                title="Total Applications"
+                value={`${totalApplications}`}
+                description="Applications saved"
+                icon={<Briefcase size={24} />}
+              />
+
+              <AnalyticsCard
+                title="Response Rate"
+                value={`${responseRate}%`}
+                description="Not still applied"
+                icon={<TrendingUp size={24} />}
+              />
+
+              <AnalyticsCard
+                title="Interview Rate"
+                value={`${interviewRate}%`}
+                description="Reached interview"
+                icon={<Users size={24} />}
+              />
+
+              <AnalyticsCard
+                title="Offer Rate"
+                value={`${offerRate}%`}
+                description="Reached offer"
+                icon={<CheckCircle2 size={24} />}
+              />
+            </section>
+
+            {applications.length === 0 && (
+              <div className="rounded-3xl border border-white/10 bg-slate-900/80 p-10 text-center">
+                <BarChart3 className="mx-auto text-slate-500" size={44} />
+                <h2 className="mt-4 text-xl font-semibold text-white">
+                  No analytics data yet
+                </h2>
+                <p className="mt-2 text-sm text-slate-400">
+                  Add applications first to generate analytics.
+                </p>
+              </div>
+            )}
+
+            {applications.length > 0 && (
+              <>
+                <section className="rounded-3xl border border-white/10 bg-slate-900/80 p-6 shadow-xl">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-indigo-300">
+                        Monthly Applications
+                      </p>
+                      <h2 className="mt-2 text-xl font-semibold text-white">
+                        Applications added by month
+                      </h2>
+                    </div>
+                    <BarChart3 className="text-indigo-300" size={26} />
+                  </div>
+
+                  <div className="mt-8 flex h-72 items-end gap-3 overflow-x-auto rounded-2xl border border-white/10 bg-slate-950 p-5">
+                    {monthlyApplications.map((item) => {
+                      const height =
+                        item.count > 0
+                          ? Math.max((item.count / maxMonthlyCount) * 100, 12)
+                          : 4;
+
+                      return (
+                        <div
+                          key={item.month}
+                          className="flex min-w-[54px] flex-1 flex-col items-center justify-end gap-3"
+                        >
+                          <div className="flex h-52 w-full items-end">
+                            <div
+                              className="mx-auto w-10 rounded-t-xl bg-indigo-500 transition-all md:w-12"
+                              style={{ height: `${height}%` }}
+                            />
+                          </div>
+
+                          <p className="text-xs font-medium text-slate-400">
+                            {item.month}
+                          </p>
+
+                          <p className="text-xs text-slate-500">
+                            {item.count}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+
+                <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+                  <div className="rounded-3xl border border-white/10 bg-slate-900/80 p-6 shadow-xl">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-indigo-300">
+                          Status Breakdown
+                        </p>
+                        <h2 className="mt-2 text-xl font-semibold text-white">
+                          Applications by status
+                        </h2>
+                      </div>
+                      <PieChart className="text-indigo-300" size={26} />
+                    </div>
+
+                    <div className="mt-6 space-y-5">
+                      {statusDistribution.map((item) => {
+                        const width =
+                          item.count > 0
+                            ? (item.count / maxStatusCount) * 100
+                            : 0;
+
+                        return (
+                          <div key={item.status}>
+                            <div className="mb-2 flex items-center justify-between">
+                              <StatusBadge status={item.status} />
+                              <span className="text-sm font-medium text-slate-300">
+                                {item.count}
+                              </span>
+                            </div>
+
+                            <div className="h-3 overflow-hidden rounded-full bg-slate-950">
+                              <div
+                                className="h-full rounded-full bg-indigo-500"
+                                style={{ width: `${width}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="rounded-3xl border border-white/10 bg-slate-900/80 p-6 shadow-xl">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-indigo-300">
+                          Quick Summary
+                        </p>
+                        <h2 className="mt-2 text-xl font-semibold text-white">
+                          What your data says
+                        </h2>
+                      </div>
+                      <TrendingUp className="text-indigo-300" size={26} />
+                    </div>
+
+                    <div className="mt-6 space-y-4">
+                      <SummaryItem
+                        label="Applications submitted"
+                        value={totalApplications}
+                      />
+
+                      <SummaryItem
+                        label="Applications with response"
+                        value={responses}
+                      />
+
+                      <SummaryItem
+                        label="Interview opportunities"
+                        value={interviews}
+                      />
+
+                      <SummaryItem label="Offers received" value={offers} />
+                    </div>
+
+                    <div className="mt-6 rounded-2xl border border-indigo-500/20 bg-indigo-500/10 p-4">
+                      <p className="text-sm leading-6 text-indigo-100">
+                        Keep updating your application statuses regularly. Your
+                        analytics becomes more useful when the status data is
+                        accurate.
+                      </p>
+                    </div>
+                  </div>
+                </section>
+              </>
+            )}
+          </>
+        )}
+      </div>
+    </DashboardLayout>
+  );
 }
 
-function AnalyticsStatCard({
+function AnalyticsCard({
   title,
   value,
   description,
   icon,
 }: {
   title: string;
-  value: number | string;
+  value: string;
   description: string;
   icon: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-      <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-500/20 text-indigo-300">
-        {icon}
+    <div className="rounded-3xl border border-white/10 bg-slate-900/80 p-6 shadow-xl">
+      <div className="flex items-center justify-between">
+        <div className="rounded-2xl bg-indigo-500/10 p-3 text-indigo-300">
+          {icon}
+        </div>
+        <span className="text-xs text-slate-500">{description}</span>
       </div>
 
-      <p className="text-sm text-slate-400">{title}</p>
-
-      <h2 className="mt-2 text-3xl font-bold">{value}</h2>
-
-      <p className="mt-2 text-sm text-slate-500">{description}</p>
+      <p className="mt-6 text-3xl font-bold text-white">{value}</p>
+      <p className="mt-2 text-sm text-slate-400">{title}</p>
     </div>
   );
 }
 
-function SummaryBox({ label, value }: { label: string; value: number }) {
+function SummaryItem({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-[#07111f] p-5">
-      <p className="text-sm text-slate-400">{label}</p>
-
-      <h3 className="mt-2 text-2xl font-bold">{value}</h3>
-    </div>
-  );
-}
-
-function InsightItem({
-  title,
-  description,
-}: {
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="rounded-xl border border-white/10 bg-[#07111f] p-4">
-      <p className="font-medium">{title}</p>
-
-      <p className="mt-2 text-sm leading-6 text-slate-400">{description}</p>
-    </div>
-  );
-}
-
-function EmptyState({ message }: { message: string }) {
-  return (
-    <div className="rounded-2xl border border-dashed border-white/10 bg-[#07111f] p-10 text-center">
-      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-indigo-500/20 text-indigo-300">
-        <BarChart3 size={24} />
-      </div>
-
-      <h3 className="mt-5 text-lg font-semibold">No analytics yet</h3>
-
-      <p className="mt-2 text-sm text-slate-400">{message}</p>
+    <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-slate-950 px-4 py-3">
+      <span className="text-sm text-slate-400">{label}</span>
+      <span className="text-lg font-semibold text-white">{value}</span>
     </div>
   );
 }

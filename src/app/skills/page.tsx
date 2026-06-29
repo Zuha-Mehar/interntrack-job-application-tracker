@@ -1,306 +1,384 @@
 "use client";
 
-import DashboardLayout from "../../components/DashboardLayout";
-import { getApplications } from "../../lib/applicationStorage";
-import type { JobApplication } from "../../types";
+import { useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
   Brain,
   CheckCircle2,
   Lightbulb,
+  Loader2,
   Sparkles,
   TrendingUp,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import DashboardLayout from "../../components/DashboardLayout";
+import { getApplications } from "../../lib/applicationApi";
+import type { JobApplication } from "../../types";
 
 const highDemandSkills = [
   "React",
   "TypeScript",
   "Next.js",
+  "JavaScript",
+  "Tailwind CSS",
   "Node.js",
   "PostgreSQL",
-  "Tailwind CSS",
+  "Prisma",
+  "REST API",
+  "Git",
+  "Python",
   "Docker",
-  "AWS",
 ];
 
-export default function SkillsPage() {
-  const [applications, setApplications] = useState<JobApplication[]>([]);
+type SkillStat = {
+  name: string;
+  count: number;
+};
 
-  useEffect(() => {
-    const savedApplications = getApplications();
-    setApplications(savedApplications);
-  }, []);
+function normalizeSkillName(skill: string) {
+  const value = skill.trim().toLowerCase();
 
-  const skillCounts = getSkillCounts(applications);
+  const skillMap: Record<string, string> = {
+    js: "javascript",
+    javascript: "javascript",
+    ts: "typescript",
+    typescript: "typescript",
+    reactjs: "react",
+    "react.js": "react",
+    react: "react",
+    nextjs: "next.js",
+    "next.js": "next.js",
+    tailwind: "tailwind css",
+    "tailwind css": "tailwind css",
+    postgres: "postgresql",
+    postgresql: "postgresql",
+    node: "node.js",
+    nodejs: "node.js",
+    "node.js": "node.js",
+    prisma: "prisma",
+    git: "git",
+    python: "python",
+    docker: "docker",
+    api: "rest api",
+    "rest api": "rest api",
+  };
 
-  const totalSkills = skillCounts.length;
-
-  const topSkill = skillCounts.length > 0 ? skillCounts[0].name : "None";
-
-  const maxSkillCount =
-    skillCounts.length === 0
-      ? 1
-      : Math.max(...skillCounts.map((skill) => skill.count));
-
-  const existingSkills = new Set(
-    skillCounts.map((skill) => skill.name.toLowerCase())
-  );
-
-  const missingSkills = highDemandSkills.filter(
-    (skill) => !existingSkills.has(skill.toLowerCase())
-  );
-
-  const learnedHighDemandSkills = highDemandSkills.filter((skill) =>
-    existingSkills.has(skill.toLowerCase())
-  );
-
-  return (
-    <DashboardLayout>
-      <div className="mb-8">
-        <p className="mb-2 text-sm font-medium text-indigo-300">
-          Skill Insights
-        </p>
-
-        <h1 className="text-2xl font-bold md:text-3xl">Skills Dashboard</h1>
-
-        <p className="mt-2 text-sm text-slate-400">
-          Analyze skills from your saved job applications and find what to learn
-          next.
-        </p>
-      </div>
-
-      <section className="mb-8 grid grid-cols-1 gap-5 md:grid-cols-3">
-        <SkillStatCard
-          title="Unique Skills"
-          value={totalSkills}
-          description="Skills found in your applications"
-          icon={<Brain size={22} />}
-        />
-
-        <SkillStatCard
-          title="Top Skill"
-          value={topSkill}
-          description="Most repeated skill"
-          icon={<TrendingUp size={22} />}
-        />
-
-        <SkillStatCard
-          title="High-Demand Covered"
-          value={`${learnedHighDemandSkills.length}/${highDemandSkills.length}`}
-          description="Skills already present"
-          icon={<CheckCircle2 size={22} />}
-        />
-      </section>
-
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-        <section className="rounded-2xl border border-white/10 bg-white/5 p-6 xl:col-span-2">
-          <div className="mb-6 flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-500/20 text-indigo-300">
-              <Sparkles size={22} />
-            </div>
-
-            <div>
-              <h2 className="text-lg font-semibold">Skills Required</h2>
-              <p className="text-sm text-slate-400">
-                Skills extracted from all your saved applications.
-              </p>
-            </div>
-          </div>
-
-          {skillCounts.length === 0 ? (
-            <EmptyState message="No skills found yet. Add applications with skills to see insights." />
-          ) : (
-            <div className="space-y-5">
-              {skillCounts.map((skill) => {
-                const percentage = (skill.count / maxSkillCount) * 100;
-
-                return (
-                  <div
-                    key={skill.name}
-                    className="rounded-xl border border-white/10 bg-[#07111f] p-4"
-                  >
-                    <div className="mb-3 flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">{skill.name}</p>
-                        <p className="mt-1 text-xs text-slate-500">
-                          Appears in {skill.count} application
-                          {skill.count > 1 ? "s" : ""}
-                        </p>
-                      </div>
-
-                      <span className="rounded-full bg-indigo-500/20 px-3 py-1 text-xs text-indigo-300">
-                        {Math.round(percentage)}%
-                      </span>
-                    </div>
-
-                    <div className="h-2 rounded-full bg-white/10">
-                      <div
-                        className="h-2 rounded-full bg-indigo-500"
-                        style={{ width: `${percentage}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
-
-        <section className="space-y-6">
-          <div className="rounded-2xl border border-yellow-500/20 bg-yellow-500/10 p-6">
-            <div className="mb-5 flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-yellow-500/20 text-yellow-300">
-                <AlertCircle size={22} />
-              </div>
-
-              <div>
-                <h2 className="text-lg font-semibold text-yellow-100">
-                  Missing Skills
-                </h2>
-
-                <p className="text-sm text-slate-400">
-                  Useful skills to learn next.
-                </p>
-              </div>
-            </div>
-
-            {missingSkills.length === 0 ? (
-              <div className="rounded-xl border border-green-500/20 bg-green-500/10 p-4">
-                <p className="text-sm text-green-300">
-                  Great! You already have many high-demand skills.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {missingSkills.map((skill) => (
-                  <div
-                    key={skill}
-                    className="flex items-center justify-between rounded-xl border border-white/10 bg-[#07111f] p-4"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Lightbulb size={18} className="text-yellow-300" />
-                      <span className="text-sm font-medium">{skill}</span>
-                    </div>
-
-                    <span className="rounded-full bg-red-500/20 px-3 py-1 text-xs text-red-300">
-                      Learn
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/10 p-6">
-            <h2 className="text-lg font-semibold text-indigo-100">
-              Learning Suggestion
-            </h2>
-
-            <p className="mt-3 text-sm leading-6 text-slate-300">
-              Focus on skills that appear often in job posts and also match
-              your target role.
-            </p>
-
-            <div className="mt-5 rounded-xl border border-white/10 bg-[#07111f] p-4">
-              <p className="text-sm font-medium text-white">
-                Suggested order:
-              </p>
-
-              <p className="mt-2 text-sm leading-6 text-slate-400">
-                React → TypeScript → Next.js → Node.js → PostgreSQL → Docker
-              </p>
-            </div>
-          </div>
-        </section>
-      </div>
-    </DashboardLayout>
-  );
+  return skillMap[value] || value;
 }
 
-function getSkillCounts(applications: JobApplication[]) {
-  const skillMap: Record<string, number> = {};
+function formatSkillName(skill: string) {
+  const formattedNames: Record<string, string> = {
+    javascript: "JavaScript",
+    typescript: "TypeScript",
+    react: "React",
+    "next.js": "Next.js",
+    "tailwind css": "Tailwind CSS",
+    postgresql: "PostgreSQL",
+    "node.js": "Node.js",
+    prisma: "Prisma",
+    git: "Git",
+    python: "Python",
+    docker: "Docker",
+    "rest api": "REST API",
+  };
+
+  return formattedNames[skill] || skill;
+}
+
+function getSkillStats(applications: JobApplication[]) {
+  const skillCounts: Record<string, number> = {};
 
   applications.forEach((application) => {
     application.skills.forEach((skill) => {
-      const cleanSkill = skill.trim();
+      const normalizedSkill = normalizeSkillName(skill);
 
-      if (!cleanSkill) {
+      if (!normalizedSkill) {
         return;
       }
 
-      const normalizedSkill = normalizeSkillName(cleanSkill);
-
-      if (!skillMap[normalizedSkill]) {
-        skillMap[normalizedSkill] = 0;
+      if (!skillCounts[normalizedSkill]) {
+        skillCounts[normalizedSkill] = 0;
       }
 
-      skillMap[normalizedSkill] += 1;
+      skillCounts[normalizedSkill] += 1;
     });
   });
 
-  return Object.entries(skillMap)
+  return Object.entries(skillCounts)
     .map(([name, count]) => ({
-      name,
+      name: formatSkillName(name),
       count,
     }))
     .sort((a, b) => b.count - a.count);
 }
 
-function normalizeSkillName(skill: string) {
-  const lowerSkill = skill.toLowerCase();
+export default function SkillsPage() {
+  const [applications, setApplications] = useState<JobApplication[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  if (lowerSkill === "js") return "JavaScript";
-  if (lowerSkill === "ts") return "TypeScript";
-  if (lowerSkill === "react.js") return "React";
-  if (lowerSkill === "nextjs") return "Next.js";
-  if (lowerSkill === "nodejs") return "Node.js";
-  if (lowerSkill === "tailwind") return "Tailwind CSS";
-  if (lowerSkill === "postgres") return "PostgreSQL";
-  if (lowerSkill === "postgresql") return "PostgreSQL";
+  async function loadApplications() {
+    try {
+      setIsLoading(true);
+      setError("");
 
-  return skill
-    .split(" ")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
+      const data = await getApplications();
+      setApplications(data);
+    } catch {
+      setError("Failed to load skills data from database.");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadApplications();
+  }, []);
+
+  const skillStats = useMemo(() => {
+    return getSkillStats(applications);
+  }, [applications]);
+
+  const topSkill = skillStats[0]?.name || "No skills yet";
+
+  const coveredHighDemandSkills = highDemandSkills.filter((skill) =>
+    skillStats.some(
+      (skillStat) =>
+        normalizeSkillName(skillStat.name) === normalizeSkillName(skill)
+    )
+  );
+
+  const missingSkills = highDemandSkills.filter(
+    (skill) =>
+      !skillStats.some(
+        (skillStat) =>
+          normalizeSkillName(skillStat.name) === normalizeSkillName(skill)
+      )
+  );
+
+  const maxSkillCount = Math.max(...skillStats.map((skill) => skill.count), 1);
+
+  return (
+    <DashboardLayout>
+      <div className="space-y-8">
+        <section className="rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950 p-6 shadow-2xl">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-sm font-medium text-indigo-300">
+                Skills Insights
+              </p>
+              <h1 className="mt-2 text-3xl font-bold text-white">
+                Understand your job skill patterns
+              </h1>
+              <p className="mt-3 max-w-2xl text-sm text-slate-400">
+                InternTrack analyzes skills from your PostgreSQL applications
+                and shows your strongest and missing skills.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <Brain className="text-indigo-300" size={30} />
+            </div>
+          </div>
+        </section>
+
+        {isLoading && (
+          <div className="flex items-center justify-center gap-3 rounded-3xl border border-white/10 bg-slate-900/80 p-8 text-slate-400">
+            <Loader2 className="animate-spin" size={20} />
+            Loading skills from database...
+          </div>
+        )}
+
+        {error && (
+          <div className="rounded-3xl border border-red-500/20 bg-red-500/10 p-5 text-sm text-red-300">
+            {error}
+          </div>
+        )}
+
+        {!isLoading && !error && (
+          <>
+            <section className="grid gap-5 md:grid-cols-3">
+              <SkillSummaryCard
+                title="Unique Skills"
+                value={skillStats.length.toString()}
+                description="Skills found in applications"
+                icon={<Sparkles size={24} />}
+              />
+
+              <SkillSummaryCard
+                title="Top Skill"
+                value={topSkill}
+                description="Most repeated skill"
+                icon={<TrendingUp size={24} />}
+              />
+
+              <SkillSummaryCard
+                title="High-Demand Covered"
+                value={`${coveredHighDemandSkills.length}/${highDemandSkills.length}`}
+                description="Recruiter-friendly skills"
+                icon={<CheckCircle2 size={24} />}
+              />
+            </section>
+
+            {applications.length === 0 && (
+              <div className="rounded-3xl border border-white/10 bg-slate-900/80 p-10 text-center">
+                <Brain className="mx-auto text-slate-500" size={44} />
+                <h2 className="mt-4 text-xl font-semibold text-white">
+                  No skills data yet
+                </h2>
+                <p className="mt-2 text-sm text-slate-400">
+                  Add applications with skills to generate skill insights.
+                </p>
+              </div>
+            )}
+
+            {applications.length > 0 && (
+              <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+                <div className="rounded-3xl border border-white/10 bg-slate-900/80 p-6 shadow-xl">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-indigo-300">
+                        Skill Frequency
+                      </p>
+                      <h2 className="mt-2 text-xl font-semibold text-white">
+                        Skills used across applications
+                      </h2>
+                    </div>
+                    <Brain className="text-indigo-300" size={26} />
+                  </div>
+
+                  <div className="mt-6 space-y-5">
+                    {skillStats.length === 0 && (
+                      <p className="rounded-2xl border border-dashed border-white/10 bg-slate-950 p-5 text-sm text-slate-500">
+                        No skills found. Edit applications and add skills.
+                      </p>
+                    )}
+
+                    {skillStats.map((skill) => {
+                      const width = (skill.count / maxSkillCount) * 100;
+
+                      return (
+                        <div key={skill.name}>
+                          <div className="mb-2 flex items-center justify-between">
+                            <span className="text-sm font-medium text-slate-300">
+                              {skill.name}
+                            </span>
+                            <span className="text-sm text-slate-400">
+                              {skill.count}
+                            </span>
+                          </div>
+
+                          <div className="h-3 overflow-hidden rounded-full bg-slate-950">
+                            <div
+                              className="h-full rounded-full bg-indigo-500"
+                              style={{ width: `${width}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  <div className="rounded-3xl border border-white/10 bg-slate-900/80 p-6 shadow-xl">
+                    <div className="flex items-center gap-3">
+                      <CheckCircle2 className="text-green-400" size={24} />
+                      <h2 className="text-xl font-semibold text-white">
+                        Skills You Already Cover
+                      </h2>
+                    </div>
+
+                    <div className="mt-5 flex flex-wrap gap-2">
+                      {coveredHighDemandSkills.length === 0 && (
+                        <p className="text-sm text-slate-500">
+                          No high-demand skills found yet.
+                        </p>
+                      )}
+
+                      {coveredHighDemandSkills.map((skill) => (
+                        <span
+                          key={skill}
+                          className="rounded-full border border-green-500/20 bg-green-500/10 px-3 py-1 text-xs font-medium text-green-300"
+                        >
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="rounded-3xl border border-white/10 bg-slate-900/80 p-6 shadow-xl">
+                    <div className="flex items-center gap-3">
+                      <AlertCircle className="text-yellow-400" size={24} />
+                      <h2 className="text-xl font-semibold text-white">
+                        Missing High-Demand Skills
+                      </h2>
+                    </div>
+
+                    <div className="mt-5 flex flex-wrap gap-2">
+                      {missingSkills.length === 0 && (
+                        <p className="text-sm text-slate-500">
+                          Great! You cover all suggested skills.
+                        </p>
+                      )}
+
+                      {missingSkills.slice(0, 8).map((skill) => (
+                        <span
+                          key={skill}
+                          className="rounded-full border border-yellow-500/20 bg-yellow-500/10 px-3 py-1 text-xs font-medium text-yellow-300"
+                        >
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="rounded-3xl border border-white/10 bg-slate-900/80 p-6 shadow-xl">
+                    <div className="flex items-center gap-3">
+                      <Lightbulb className="text-indigo-300" size={24} />
+                      <h2 className="text-xl font-semibold text-white">
+                        Learning Suggestion
+                      </h2>
+                    </div>
+
+                    <p className="mt-4 text-sm leading-6 text-slate-400">
+                      Focus on skills that appear often in your target job
+                      posts. For frontend and full-stack roles, prioritize
+                      TypeScript, Next.js, PostgreSQL, Prisma, APIs, and
+                      deployment.
+                    </p>
+                  </div>
+                </div>
+              </section>
+            )}
+          </>
+        )}
+      </div>
+    </DashboardLayout>
+  );
 }
 
-function SkillStatCard({
+function SkillSummaryCard({
   title,
   value,
   description,
   icon,
 }: {
   title: string;
-  value: number | string;
+  value: string;
   description: string;
   icon: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-      <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-500/20 text-indigo-300">
-        {icon}
+    <div className="rounded-3xl border border-white/10 bg-slate-900/80 p-6 shadow-xl">
+      <div className="flex items-center justify-between">
+        <div className="rounded-2xl bg-indigo-500/10 p-3 text-indigo-300">
+          {icon}
+        </div>
+        <span className="text-xs text-slate-500">{description}</span>
       </div>
 
-      <p className="text-sm text-slate-400">{title}</p>
-
-      <h2 className="mt-2 text-2xl font-bold">{value}</h2>
-
-      <p className="mt-2 text-sm text-slate-500">{description}</p>
-    </div>
-  );
-}
-
-function EmptyState({ message }: { message: string }) {
-  return (
-    <div className="rounded-2xl border border-dashed border-white/10 bg-[#07111f] p-10 text-center">
-      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-indigo-500/20 text-indigo-300">
-        <Brain size={24} />
-      </div>
-
-      <h3 className="mt-5 text-lg font-semibold">No skill data yet</h3>
-
-      <p className="mt-2 text-sm text-slate-400">{message}</p>
+      <p className="mt-6 text-2xl font-bold text-white">{value}</p>
+      <p className="mt-2 text-sm text-slate-400">{title}</p>
     </div>
   );
 }

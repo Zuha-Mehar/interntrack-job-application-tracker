@@ -1,35 +1,75 @@
 "use client";
 
-import DashboardLayout from "../../components/DashboardLayout";
-import StatusBadge from "../../components/StatusBadge";
-import {
-  deleteApplication,
-  getApplications,
-} from "../../lib/applicationStorage";
-import type { JobApplication } from "../../types";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import {
   Briefcase,
   Calendar,
   ExternalLink,
   Pencil,
+  Plus,
   Search,
   Trash2,
 } from "lucide-react";
-import Link from "next/link";
-import { useEffect, useState } from "react";
+import DashboardLayout from "../../components/DashboardLayout";
+import StatusBadge from "../../components/StatusBadge";
+import { deleteApplication, getApplications } from "../../lib/applicationApi";
+import type { ApplicationStatus, JobApplication } from "../../types";
+
+const statusOptions: ("All" | ApplicationStatus)[] = [
+  "All",
+  "Applied",
+  "Shortlisted",
+  "Interview",
+  "Offer",
+  "Rejected",
+];
 
 export default function ApplicationsPage() {
   const [applications, setApplications] = useState<JobApplication[]>([]);
-  const [searchText, setSearchText] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState("All Status");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"All" | ApplicationStatus>(
+    "All"
+  );
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  async function loadApplications() {
+    try {
+      setIsLoading(true);
+      setError("");
+
+      const data = await getApplications();
+      setApplications(data);
+    } catch {
+      setError("Failed to load applications from database.");
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   useEffect(() => {
-    const savedApplications = getApplications();
-    setApplications(savedApplications);
+    loadApplications();
   }, []);
 
-  function handleDelete(applicationId: number) {
-    const confirmDelete = confirm(
+  const filteredApplications = useMemo(() => {
+    return applications.filter((application) => {
+      const searchText = searchTerm.toLowerCase();
+
+      const matchesSearch =
+        application.company.toLowerCase().includes(searchText) ||
+        application.role.toLowerCase().includes(searchText) ||
+        application.skills.join(" ").toLowerCase().includes(searchText);
+
+      const matchesStatus =
+        statusFilter === "All" || application.status === statusFilter;
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [applications, searchTerm, statusFilter]);
+
+  async function handleDelete(applicationId: number) {
+    const confirmDelete = window.confirm(
       "Are you sure you want to delete this application?"
     );
 
@@ -37,213 +77,184 @@ export default function ApplicationsPage() {
       return;
     }
 
-    const updatedApplications = deleteApplication(applicationId);
-    setApplications(updatedApplications);
+    try {
+      await deleteApplication(applicationId);
+
+      setApplications((currentApplications) =>
+        currentApplications.filter(
+          (application) => application.id !== applicationId
+        )
+      );
+    } catch {
+      alert("Failed to delete application.");
+    }
   }
-
-  const filteredApplications = applications.filter((app) => {
-    const search = searchText.toLowerCase();
-
-    const matchesSearch =
-      app.company.toLowerCase().includes(search) ||
-      app.role.toLowerCase().includes(search) ||
-      app.skills.some((skill) => skill.toLowerCase().includes(search));
-
-    const matchesStatus =
-      selectedStatus === "All Status" || app.status === selectedStatus;
-
-    return matchesSearch && matchesStatus;
-  });
 
   return (
     <DashboardLayout>
-      <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <p className="mb-2 text-sm font-medium text-indigo-300">
-            Application Manager
-          </p>
-
-          <h1 className="text-2xl font-bold md:text-3xl">
-            All Applications
-          </h1>
-
-          <p className="mt-2 text-sm text-slate-400">
-            Manage, search, edit, and delete your saved job applications.
-          </p>
-        </div>
-
-        <Link
-          href="/applications/add"
-          className="w-fit rounded-lg bg-indigo-600 px-5 py-3 text-sm font-medium shadow-lg shadow-indigo-600/20 hover:bg-indigo-500"
-        >
-          + Add Application
-        </Link>
-      </div>
-
-      <section className="mb-6 rounded-2xl border border-white/10 bg-white/5 p-5">
-        <div className="flex flex-col gap-4 md:flex-row">
-          <div className="relative flex-1">
-            <Search
-              size={18}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
-            />
-
-            <input
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              placeholder="Search by company, role, or skill..."
-              className="w-full rounded-lg border border-white/10 bg-[#07111f] px-10 py-3 text-sm outline-none placeholder:text-slate-500"
-            />
-          </div>
-
-          <select
-            value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value)}
-            className="rounded-lg border border-white/10 bg-[#07111f] px-4 py-3 text-sm outline-none"
-          >
-            <option>All Status</option>
-            <option>Applied</option>
-            <option>Shortlisted</option>
-            <option>Interview</option>
-            <option>Offer</option>
-            <option>Rejected</option>
-          </select>
-        </div>
-      </section>
-
-      <div className="mb-5 flex items-center justify-between">
-        <p className="text-sm text-slate-400">
-          Showing{" "}
-          <span className="font-semibold text-white">
-            {filteredApplications.length}
-          </span>{" "}
-          of{" "}
-          <span className="font-semibold text-white">
-            {applications.length}
-          </span>{" "}
-          applications
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 gap-5">
-        {filteredApplications.length === 0 ? (
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-10 text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-indigo-500/20 text-indigo-300">
-              <Briefcase size={24} />
+      <div className="space-y-8">
+        <section className="rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950 p-6 shadow-2xl">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-sm font-medium text-indigo-300">
+                Application Manager
+              </p>
+              <h1 className="mt-2 text-3xl font-bold text-white">
+                Track all job applications
+              </h1>
+              <p className="mt-3 max-w-2xl text-sm text-slate-400">
+                View, search, filter, edit, and delete your saved applications
+                from one place.
+              </p>
             </div>
-
-            <h2 className="mt-5 text-lg font-semibold">
-              No applications found
-            </h2>
-
-            <p className="mt-2 text-sm text-slate-400">
-              Try changing your search or add a new application.
-            </p>
 
             <Link
               href="/applications/add"
-              className="mt-6 inline-block rounded-lg bg-indigo-600 px-5 py-3 text-sm font-medium hover:bg-indigo-500"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-indigo-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-400"
             >
+              <Plus size={18} />
               Add Application
             </Link>
           </div>
-        ) : (
-          filteredApplications.map((app) => (
-            <ApplicationCard
-              key={app.id}
-              app={app}
-              onDelete={handleDelete}
-            />
-          ))
+        </section>
+
+        <section className="rounded-3xl border border-white/10 bg-slate-900/80 p-5 shadow-xl">
+          <div className="grid gap-4 lg:grid-cols-[1fr_220px]">
+            <div className="relative">
+              <Search
+                size={18}
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"
+              />
+              <input
+                type="text"
+                placeholder="Search by company, role, or skill..."
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                className="w-full rounded-2xl border border-white/10 bg-slate-950 py-3 pl-11 pr-4 text-sm text-white outline-none placeholder:text-slate-500 focus:border-indigo-500"
+              />
+            </div>
+
+            <select
+              value={statusFilter}
+              onChange={(event) =>
+                setStatusFilter(event.target.value as "All" | ApplicationStatus)
+              }
+              className="rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-indigo-500"
+            >
+              {statusOptions.map((status) => (
+                <option key={status} value={status}>
+                  {status}
+                </option>
+              ))}
+            </select>
+          </div>
+        </section>
+
+        {isLoading && (
+          <div className="rounded-3xl border border-white/10 bg-slate-900/80 p-8 text-center text-slate-400">
+            Loading applications from database...
+          </div>
+        )}
+
+        {error && (
+          <div className="rounded-3xl border border-red-500/20 bg-red-500/10 p-5 text-sm text-red-300">
+            {error}
+          </div>
+        )}
+
+        {!isLoading && !error && filteredApplications.length === 0 && (
+          <div className="rounded-3xl border border-white/10 bg-slate-900/80 p-10 text-center">
+            <Briefcase className="mx-auto text-slate-500" size={42} />
+            <h2 className="mt-4 text-xl font-semibold text-white">
+              No applications found
+            </h2>
+            <p className="mt-2 text-sm text-slate-400">
+              Add your first job application or change your search/filter.
+            </p>
+          </div>
+        )}
+
+        {!isLoading && !error && filteredApplications.length > 0 && (
+          <section className="grid gap-5">
+            {filteredApplications.map((application) => (
+              <div
+                key={application.id}
+                className="rounded-3xl border border-white/10 bg-slate-900/80 p-5 shadow-xl transition hover:border-indigo-500/40"
+              >
+                <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="space-y-4">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <h2 className="text-xl font-semibold text-white">
+                          {application.role}
+                        </h2>
+                        <StatusBadge status={application.status} />
+                      </div>
+
+                      <p className="mt-1 flex items-center gap-2 text-sm text-slate-400">
+                        <Briefcase size={16} />
+                        {application.company}
+                      </p>
+                    </div>
+
+                    <p className="flex items-center gap-2 text-sm text-slate-400">
+                      <Calendar size={16} />
+                      Applied on {application.appliedDate}
+                    </p>
+
+                    <div className="flex flex-wrap gap-2">
+                      {application.skills.map((skill) => (
+                        <span
+                          key={skill}
+                          className="rounded-full border border-indigo-500/20 bg-indigo-500/10 px-3 py-1 text-xs text-indigo-200"
+                        >
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+
+                    {application.notes && (
+                      <p className="max-w-3xl text-sm text-slate-400">
+                        {application.notes}
+                      </p>
+                    )}
+
+                    {application.jobLink && (
+                      <a
+                        href={application.jobLink}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-2 text-sm font-medium text-indigo-300 hover:text-indigo-200"
+                      >
+                        <ExternalLink size={16} />
+                        View job link
+                      </a>
+                    )}
+                  </div>
+
+                  <div className="flex gap-3 lg:flex-col">
+                    <Link
+                      href={`/applications/${application.id}/edit`}
+                      className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 px-4 py-2 text-sm font-medium text-slate-200 transition hover:border-indigo-500/40 hover:bg-indigo-500/10"
+                    >
+                      <Pencil size={16} />
+                      Edit
+                    </Link>
+
+                    <button
+                      onClick={() => handleDelete(application.id)}
+                      className="inline-flex items-center justify-center gap-2 rounded-2xl border border-red-500/20 px-4 py-2 text-sm font-medium text-red-300 transition hover:bg-red-500/10"
+                    >
+                      <Trash2 size={16} />
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </section>
         )}
       </div>
     </DashboardLayout>
-  );
-}
-
-function ApplicationCard({
-  app,
-  onDelete,
-}: {
-  app: JobApplication;
-  onDelete: (id: number) => void;
-}) {
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-5 transition hover:border-indigo-500/30 hover:bg-white/10">
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-indigo-500/20 text-indigo-300">
-            <Briefcase size={22} />
-          </div>
-
-          <div>
-            <div className="flex flex-wrap items-center gap-3">
-              <h2 className="text-lg font-semibold">{app.company}</h2>
-              <StatusBadge status={app.status} />
-            </div>
-
-            <p className="mt-1 text-sm text-slate-400">{app.role}</p>
-
-            <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-500">
-              <div className="flex items-center gap-1">
-                <Calendar size={14} />
-                <span>Applied on {app.appliedDate}</span>
-              </div>
-
-              {app.jobLink && (
-                <a
-                  href={app.jobLink}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-1 text-indigo-400 hover:text-indigo-300"
-                >
-                  <ExternalLink size={14} />
-                  Job link
-                </a>
-              )}
-            </div>
-
-            {app.skills.length > 0 && (
-              <div className="mt-4 flex flex-wrap gap-2">
-                {app.skills.map((skill) => (
-                  <span
-                    key={skill}
-                    className="rounded-full border border-white/10 bg-[#07111f] px-3 py-1 text-xs text-slate-300"
-                  >
-                    {skill}
-                  </span>
-                ))}
-              </div>
-            )}
-
-            {app.notes && (
-              <p className="mt-4 max-w-3xl rounded-lg border border-white/10 bg-[#07111f] p-3 text-sm text-slate-400">
-                {app.notes}
-              </p>
-            )}
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3 lg:justify-end">
-          <Link
-            href={`/applications/${app.id}/edit`}
-            className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-300 hover:bg-white/10"
-            title="Edit application"
-          >
-            <Pencil size={16} />
-            Edit
-          </Link>
-
-          <button
-            onClick={() => onDelete(app.id)}
-            className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-300 hover:bg-red-500/20"
-            title="Delete application"
-          >
-            <Trash2 size={16} />
-            Delete
-          </button>
-        </div>
-      </div>
-    </div>
   );
 }

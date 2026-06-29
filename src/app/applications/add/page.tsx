@@ -1,8 +1,7 @@
 "use client";
 
-import DashboardLayout from "../../../components/DashboardLayout";
-import { addApplication } from "../../../lib/applicationStorage";
-import type { ApplicationStatus } from "../../../types";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Briefcase,
   FileText,
@@ -11,215 +10,266 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import DashboardLayout from "../../../components/DashboardLayout";
+import { addApplication } from "../../../lib/applicationApi";
+import type { ApplicationStatus } from "../../../types";
+
+const statusOptions: ApplicationStatus[] = [
+  "Applied",
+  "Shortlisted",
+  "Interview",
+  "Offer",
+  "Rejected",
+];
 
 export default function AddApplicationPage() {
   const router = useRouter();
 
-  const [company, setCompany] = useState("");
-  const [role, setRole] = useState("");
-  const [jobLink, setJobLink] = useState("");
-  const [status, setStatus] = useState<ApplicationStatus>("Applied");
-  const [skills, setSkills] = useState("");
-  const [notes, setNotes] = useState("");
+  const [formData, setFormData] = useState({
+    company: "",
+    role: "",
+    status: "Applied" as ApplicationStatus,
+    skills: "",
+    jobLink: "",
+    notes: "",
+  });
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
-    if (!company || !role) {
-      alert("Please enter company name and role.");
+  function handleChange(
+    event:
+      | React.ChangeEvent<HTMLInputElement>
+      | React.ChangeEvent<HTMLTextAreaElement>
+      | React.ChangeEvent<HTMLSelectElement>
+  ) {
+    const { name, value } = event.target;
+
+    setFormData((currentData) => ({
+      ...currentData,
+      [name]: value,
+    }));
+  }
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!formData.company.trim() || !formData.role.trim()) {
+      setError("Company name and role are required.");
       return;
     }
 
-    addApplication({
-      company,
-      role,
-      jobLink,
-      status,
-      notes,
-      skills: skills
-        .split(",")
-        .map((skill) => skill.trim())
-        .filter((skill) => skill.length > 0),
-    });
+    try {
+      setIsSubmitting(true);
+      setError("");
 
-    alert("Application saved successfully!");
-    router.push("/applications");
+      await addApplication({
+        company: formData.company.trim(),
+        role: formData.role.trim(),
+        status: formData.status,
+        skills: formData.skills
+          .split(",")
+          .map((skill) => skill.trim())
+          .filter(Boolean),
+        jobLink: formData.jobLink.trim(),
+        notes: formData.notes.trim(),
+      });
+
+      router.push("/applications");
+    } catch {
+      setError("Failed to add application. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
     <DashboardLayout>
-      <div className="mb-8">
-        <p className="mb-2 text-sm font-medium text-indigo-300">
-          Application Manager
-        </p>
+      <div className="mx-auto max-w-5xl space-y-8">
+        <section className="rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950 p-6 shadow-2xl">
+          <p className="text-sm font-medium text-indigo-300">
+            Add New Application
+          </p>
+          <h1 className="mt-2 text-3xl font-bold text-white">
+            Save a new job application
+          </h1>
+          <p className="mt-3 max-w-2xl text-sm text-slate-400">
+            Add company, role, skills, job link, and notes. This data will now
+            be saved in your PostgreSQL database.
+          </p>
+        </section>
 
-        <h1 className="text-2xl font-bold md:text-3xl">
-          Add New Application
-        </h1>
+        <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+          <form
+            onSubmit={handleSubmit}
+            className="rounded-3xl border border-white/10 bg-slate-900/80 p-6 shadow-xl"
+          >
+            {error && (
+              <div className="mb-5 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                {error}
+              </div>
+            )}
 
-        <p className="mt-2 text-sm text-slate-400">
-          Save a new internship or job application with all important details.
-        </p>
-      </div>
+            <div className="grid gap-5 md:grid-cols-2">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-300">
+                  Company Name
+                </label>
+                <div className="relative">
+                  <Briefcase
+                    size={18}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"
+                  />
+                  <input
+                    type="text"
+                    name="company"
+                    value={formData.company}
+                    onChange={handleChange}
+                    placeholder="Example: Google"
+                    className="w-full rounded-2xl border border-white/10 bg-slate-950 py-3 pl-11 pr-4 text-sm text-white outline-none placeholder:text-slate-500 focus:border-indigo-500"
+                  />
+                </div>
+              </div>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-        <section className="rounded-2xl border border-white/10 bg-white/5 p-6 xl:col-span-2">
-          <div className="mb-6 flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-500/20 text-indigo-300">
-              <Briefcase size={22} />
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-300">
+                  Role
+                </label>
+                <div className="relative">
+                  <Sparkles
+                    size={18}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"
+                  />
+                  <input
+                    type="text"
+                    name="role"
+                    value={formData.role}
+                    onChange={handleChange}
+                    placeholder="Example: Frontend Developer Intern"
+                    className="w-full rounded-2xl border border-white/10 bg-slate-950 py-3 pl-11 pr-4 text-sm text-white outline-none placeholder:text-slate-500 focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-300">
+                  Status
+                </label>
+                <select
+                  name="status"
+                  value={formData.status}
+                  onChange={handleChange}
+                  className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-indigo-500"
+                >
+                  {statusOptions.map((status) => (
+                    <option key={status} value={status}>
+                      {status}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-300">
+                  Skills
+                </label>
+                <input
+                  type="text"
+                  name="skills"
+                  value={formData.skills}
+                  onChange={handleChange}
+                  placeholder="React, TypeScript, Tailwind CSS"
+                  className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-indigo-500"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="mb-2 block text-sm font-medium text-slate-300">
+                  Job Link
+                </label>
+                <div className="relative">
+                  <Link2
+                    size={18}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"
+                  />
+                  <input
+                    type="url"
+                    name="jobLink"
+                    value={formData.jobLink}
+                    onChange={handleChange}
+                    placeholder="https://careers.company.com/job"
+                    className="w-full rounded-2xl border border-white/10 bg-slate-950 py-3 pl-11 pr-4 text-sm text-white outline-none placeholder:text-slate-500 focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="mb-2 block text-sm font-medium text-slate-300">
+                  Notes
+                </label>
+                <div className="relative">
+                  <FileText
+                    size={18}
+                    className="absolute left-4 top-4 text-slate-500"
+                  />
+                  <textarea
+                    name="notes"
+                    value={formData.notes}
+                    onChange={handleChange}
+                    rows={5}
+                    placeholder="Add notes about referral, deadline, interview details, or follow-up..."
+                    className="w-full resize-none rounded-2xl border border-white/10 bg-slate-950 py-3 pl-11 pr-4 text-sm text-white outline-none placeholder:text-slate-500 focus:border-indigo-500"
+                  />
+                </div>
+              </div>
             </div>
 
-            <div>
-              <h2 className="text-lg font-semibold">Application Details</h2>
-              <p className="text-sm text-slate-400">
-                Fill the details carefully so you can track it later.
-              </p>
-            </div>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-              <FormInput
-                label="Company Name"
-                value={company}
-                onChange={setCompany}
-                placeholder="Amazon"
-                icon={<Briefcase size={18} />}
-              />
-
-              <FormInput
-                label="Role Title"
-                value={role}
-                onChange={setRole}
-                placeholder="Frontend Developer Intern"
-                icon={<FileText size={18} />}
-              />
-            </div>
-
-            <FormInput
-              label="Job Link"
-              value={jobLink}
-              onChange={setJobLink}
-              placeholder="https://example.com/job/123456"
-              icon={<Link2 size={18} />}
-            />
-
-            <FormInput
-              label="Skills"
-              value={skills}
-              onChange={setSkills}
-              placeholder="React, TypeScript, Tailwind CSS"
-              icon={<Sparkles size={18} />}
-            />
-
-            <div>
-              <label className="mb-2 block text-sm text-slate-300">
-                Status
-              </label>
-
-              <select
-                value={status}
-                onChange={(e) =>
-                  setStatus(e.target.value as ApplicationStatus)
-                }
-                className="w-full rounded-lg border border-white/10 bg-[#07111f] px-4 py-3 text-sm outline-none"
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-indigo-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-400 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                <option>Applied</option>
-                <option>Shortlisted</option>
-                <option>Interview</option>
-                <option>Offer</option>
-                <option>Rejected</option>
-              </select>
-            </div>
+                <Save size={18} />
+                {isSubmitting ? "Saving..." : "Save Application"}
+              </button>
 
-            <div>
-              <label className="mb-2 block text-sm text-slate-300">
-                Notes
-              </label>
-
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={5}
-                placeholder="Applied through LinkedIn. Waiting for response."
-                className="w-full rounded-lg border border-white/10 bg-[#07111f] px-4 py-3 text-sm outline-none placeholder:text-slate-500"
-              />
-            </div>
-
-            <div className="flex flex-col gap-3 pt-3 sm:flex-row sm:justify-end">
               <button
                 type="button"
                 onClick={() => router.push("/applications")}
-                className="flex items-center justify-center gap-2 rounded-lg border border-white/10 px-5 py-3 text-sm hover:bg-white/10"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 px-5 py-3 text-sm font-semibold text-slate-300 transition hover:bg-white/5"
               >
                 <X size={18} />
                 Cancel
               </button>
-
-              <button
-                type="submit"
-                className="flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-5 py-3 text-sm font-medium shadow-lg shadow-indigo-600/20 hover:bg-indigo-500"
-              >
-                <Save size={18} />
-                Save Application
-              </button>
             </div>
           </form>
-        </section>
 
-        <aside className="rounded-2xl border border-indigo-500/20 bg-indigo-500/10 p-6">
-          <h2 className="text-lg font-semibold text-indigo-200">
-            Quick Tip
-          </h2>
+          <aside className="rounded-3xl border border-white/10 bg-slate-900/80 p-6 shadow-xl">
+            <div className="rounded-2xl bg-indigo-500/10 p-4">
+              <Sparkles className="text-indigo-300" size={28} />
+            </div>
 
-          <p className="mt-3 text-sm leading-6 text-slate-300">
-            Add skills as comma-separated values like:
-          </p>
+            <h2 className="mt-5 text-xl font-semibold text-white">
+              Quick Tip
+            </h2>
 
-          <div className="mt-4 rounded-xl border border-white/10 bg-[#07111f] p-4 text-sm text-slate-300">
-            React, TypeScript, Node.js, SQL
-          </div>
+            <p className="mt-3 text-sm leading-6 text-slate-400">
+              Add skills separated by commas. These skills will later be used in
+              your Skills Insights and Analytics pages.
+            </p>
 
-          <p className="mt-4 text-sm leading-6 text-slate-400">
-            These skills will automatically appear in your Skills Insights page.
-          </p>
-        </aside>
+            <div className="mt-5 rounded-2xl border border-white/10 bg-slate-950 p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                Example
+              </p>
+              <p className="mt-2 text-sm text-slate-300">
+                React, TypeScript, Tailwind CSS, Next.js
+              </p>
+            </div>
+          </aside>
+        </div>
       </div>
     </DashboardLayout>
-  );
-}
-
-function FormInput({
-  label,
-  value,
-  onChange,
-  placeholder,
-  icon,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  placeholder: string;
-  icon: React.ReactNode;
-}) {
-  return (
-    <div>
-      <label className="mb-2 block text-sm text-slate-300">{label}</label>
-
-      <div className="relative">
-        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">
-          {icon}
-        </div>
-
-        <input
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          className="w-full rounded-lg border border-white/10 bg-[#07111f] px-10 py-3 text-sm outline-none placeholder:text-slate-500"
-        />
-      </div>
-    </div>
   );
 }

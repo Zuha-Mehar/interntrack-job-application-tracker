@@ -1,281 +1,319 @@
 "use client";
 
-import DashboardLayout from "../../components/DashboardLayout";
-import StatusBadge from "../../components/StatusBadge";
-import { getApplications } from "../../lib/applicationStorage";
-import { getProfile } from "../../lib/profileStorage";
-import { getReminders } from "../../lib/reminderStorage";
-import type { JobApplication, Reminder } from "../../types";
+import { useEffect, useMemo, useState } from "react";
 import {
+  BarChart3,
   Briefcase,
   CalendarCheck,
   CheckCircle2,
-  Clock,
-  Send,
+  Loader2,
   TrendingUp,
   XCircle,
 } from "lucide-react";
-import Link from "next/link";
-import { useEffect, useState } from "react";
+import DashboardLayout from "../../components/DashboardLayout";
+import StatusBadge from "../../components/StatusBadge";
+import { getApplications } from "../../lib/applicationApi";
+import { getProfile } from "../../lib/profileStorage";
+import { getReminders } from "../../lib/reminderStorage";
+import type {
+  ApplicationStatus,
+  JobApplication,
+  Reminder,
+  UserProfile,
+} from "../../types";
+
+const statuses: ApplicationStatus[] = [
+  "Applied",
+  "Shortlisted",
+  "Interview",
+  "Offer",
+  "Rejected",
+];
 
 export default function DashboardPage() {
   const [applications, setApplications] = useState<JobApplication[]>([]);
   const [reminders, setReminders] = useState<Reminder[]>([]);
-  const [name, setName] = useState("Ananya");
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  async function loadDashboardData() {
+    try {
+      setIsLoading(true);
+      setError("");
+
+      const applicationData = await getApplications();
+
+      setApplications(applicationData);
+      setReminders(getReminders());
+      setProfile(getProfile());
+    } catch {
+      setError("Failed to load dashboard data from database.");
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   useEffect(() => {
-    const savedApplications = getApplications();
-    const savedProfile = getProfile();
-    const savedReminders = getReminders();
-
-    setApplications(savedApplications);
-    setName(savedProfile.name);
-    setReminders(savedReminders);
+    loadDashboardData();
   }, []);
 
   const totalApplications = applications.length;
 
-  const applied = applications.filter((app) => app.status === "Applied").length;
-
-  const shortlisted = applications.filter(
-    (app) => app.status === "Shortlisted"
-  ).length;
-
   const interviews = applications.filter(
-    (app) => app.status === "Interview"
+    (application) => application.status === "Interview"
   ).length;
 
-  const offers = applications.filter((app) => app.status === "Offer").length;
-
-  const rejections = applications.filter(
-    (app) => app.status === "Rejected"
+  const offers = applications.filter(
+    (application) => application.status === "Offer"
   ).length;
 
-  const responseCount = applications.filter(
-    (app) => app.status !== "Applied"
+  const rejected = applications.filter(
+    (application) => application.status === "Rejected"
+  ).length;
+
+  const responses = applications.filter(
+    (application) => application.status !== "Applied"
   ).length;
 
   const responseRate =
-    totalApplications === 0
-      ? 0
-      : Math.round((responseCount / totalApplications) * 100);
+    totalApplications > 0 ? Math.round((responses / totalApplications) * 100) : 0;
+
+  const recentApplications = applications.slice(0, 4);
 
   const upcomingReminders = reminders
     .filter((reminder) => reminder.status === "Upcoming")
     .slice(0, 3);
 
-  const recentApplications = applications.slice(0, 4);
+  const statusDistribution = useMemo(() => {
+    return statuses.map((status) => ({
+      status,
+      count: applications.filter((application) => application.status === status)
+        .length,
+    }));
+  }, [applications]);
+
+  const maxStatusCount = Math.max(
+    ...statusDistribution.map((item) => item.count),
+    1
+  );
 
   return (
     <DashboardLayout>
-      <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <p className="mb-2 text-sm font-medium text-indigo-300">
-            Internship Tracker Dashboard
-          </p>
-
-          <h1 className="text-2xl font-bold md:text-3xl">
-            Welcome back, {name} 👋
-          </h1>
-
-          <p className="mt-2 text-sm text-slate-400">
-            Track your applications, interviews, reminders, and progress.
-          </p>
-        </div>
-
-        <Link
-          href="/applications/add"
-          className="w-fit rounded-lg bg-indigo-600 px-5 py-3 text-sm font-medium shadow-lg shadow-indigo-600/20 hover:bg-indigo-500"
-        >
-          + Add Application
-        </Link>
-      </div>
-
-      <section className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          title="Total Applications"
-          value={totalApplications}
-          icon={<Briefcase size={22} />}
-          description="All saved applications"
-        />
-
-        <StatCard
-          title="Interviews"
-          value={interviews}
-          icon={<CalendarCheck size={22} />}
-          description="Applications in interview stage"
-        />
-
-        <StatCard
-          title="Offers"
-          value={offers}
-          icon={<CheckCircle2 size={22} />}
-          description="Successful outcomes"
-        />
-
-        <StatCard
-          title="Rejected"
-          value={rejections}
-          icon={<XCircle size={22} />}
-          description="Closed applications"
-        />
-      </section>
-
-      <section className="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-3">
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-6 xl:col-span-2">
-          <div className="mb-6 flex items-center justify-between">
+      <div className="space-y-8">
+        <section className="rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950 p-6 shadow-2xl">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <h2 className="text-lg font-semibold">Application Status</h2>
-              <p className="mt-1 text-sm text-slate-400">
-                Current distribution of your saved applications.
+              <p className="text-sm font-medium text-indigo-300">
+                Welcome back, {profile?.name || "User"} 👋
+              </p>
+              <h1 className="mt-2 text-3xl font-bold text-white">
+                Your job search dashboard
+              </h1>
+              <p className="mt-3 max-w-2xl text-sm text-slate-400">
+                Track applications, interviews, reminders, and progress from
+                your PostgreSQL database.
               </p>
             </div>
 
-            <div className="rounded-full bg-indigo-500/20 px-4 py-2 text-sm text-indigo-300">
-              {responseRate}% response rate
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <StatusProgress
-              label="Applied"
-              value={applied}
-              total={totalApplications}
-              color="bg-blue-500"
-            />
-
-            <StatusProgress
-              label="Shortlisted"
-              value={shortlisted}
-              total={totalApplications}
-              color="bg-yellow-500"
-            />
-
-            <StatusProgress
-              label="Interview"
-              value={interviews}
-              total={totalApplications}
-              color="bg-purple-500"
-            />
-
-            <StatusProgress
-              label="Offer"
-              value={offers}
-              total={totalApplications}
-              color="bg-green-500"
-            />
-
-            <StatusProgress
-              label="Rejected"
-              value={rejections}
-              total={totalApplications}
-              color="bg-red-500"
-            />
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
-          <div className="mb-6 flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold">Upcoming Reminders</h2>
-              <p className="mt-1 text-sm text-slate-400">
-                Do not miss important tasks.
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <p className="text-xs uppercase tracking-wide text-slate-500">
+                Response Rate
+              </p>
+              <p className="mt-2 text-3xl font-bold text-white">
+                {responseRate}%
               </p>
             </div>
-
-            <Clock size={22} className="text-indigo-300" />
           </div>
+        </section>
 
-          <div className="space-y-4">
-            {upcomingReminders.length === 0 ? (
-              <EmptyState message="No upcoming reminders." />
-            ) : (
-              upcomingReminders.map((reminder) => (
-                <div
-                  key={reminder.id}
-                  className="rounded-xl border border-white/10 bg-[#07111f] p-4"
-                >
-                  <p className="font-medium">{reminder.title}</p>
-
-                  <p className="mt-1 text-sm text-slate-400">
-                    {reminder.date}
-                  </p>
-
-                  <span className="mt-3 inline-block rounded-full bg-indigo-500/20 px-3 py-1 text-xs text-indigo-300">
-                    {reminder.type}
-                  </span>
-                </div>
-              ))
-            )}
+        {isLoading && (
+          <div className="flex items-center justify-center gap-3 rounded-3xl border border-white/10 bg-slate-900/80 p-8 text-slate-400">
+            <Loader2 className="animate-spin" size={20} />
+            Loading dashboard from database...
           </div>
+        )}
 
-          <Link
-            href="/reminders"
-            className="mt-5 inline-block text-sm font-medium text-indigo-400 hover:text-indigo-300"
-          >
-            View all reminders →
-          </Link>
-        </div>
-      </section>
-
-      <section className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-6">
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold">Recent Applications</h2>
-            <p className="mt-1 text-sm text-slate-400">
-              Latest applications added to InternTrack.
-            </p>
+        {error && (
+          <div className="rounded-3xl border border-red-500/20 bg-red-500/10 p-5 text-sm text-red-300">
+            {error}
           </div>
+        )}
 
-          <Link
-            href="/applications"
-            className="text-sm font-medium text-indigo-400 hover:text-indigo-300"
-          >
-            View all →
-          </Link>
-        </div>
+        {!isLoading && !error && (
+          <>
+            <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+              <StatCard
+                title="Total Applications"
+                value={totalApplications}
+                icon={<Briefcase size={24} />}
+                description="Saved applications"
+              />
 
-        <div className="space-y-4">
-          {recentApplications.length === 0 ? (
-            <EmptyState message="No applications added yet." />
-          ) : (
-            recentApplications.map((app) => (
-              <div
-                key={app.id}
-                className="flex flex-col gap-4 rounded-xl border border-white/10 bg-[#07111f] p-5 md:flex-row md:items-center md:justify-between"
-              >
-                <div>
-                  <div className="mb-2 flex items-center gap-2">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-500/20 text-indigo-300">
-                      <Send size={17} />
-                    </div>
+              <StatCard
+                title="Interviews"
+                value={interviews}
+                icon={<CalendarCheck size={24} />}
+                description="Interview stage"
+              />
 
-                    <div>
-                      <p className="font-semibold">{app.company}</p>
-                      <p className="text-sm text-slate-400">{app.role}</p>
-                    </div>
+              <StatCard
+                title="Offers"
+                value={offers}
+                icon={<CheckCircle2 size={24} />}
+                description="Successful offers"
+              />
+
+              <StatCard
+                title="Rejected"
+                value={rejected}
+                icon={<XCircle size={24} />}
+                description="Rejected applications"
+              />
+            </section>
+
+            <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+              <div className="rounded-3xl border border-white/10 bg-slate-900/80 p-6 shadow-xl">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-indigo-300">
+                      Application Status
+                    </p>
+                    <h2 className="mt-2 text-xl font-semibold text-white">
+                      Pipeline distribution
+                    </h2>
                   </div>
-
-                  <p className="mt-2 text-xs text-slate-500">
-                    Applied on {app.appliedDate}
-                  </p>
+                  <BarChart3 className="text-indigo-300" size={26} />
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3">
-                  <StatusBadge status={app.status} />
+                <div className="mt-6 space-y-5">
+                  {statusDistribution.map((item) => {
+                    const width = (item.count / maxStatusCount) * 100;
 
-                  <Link
-                    href={`/applications/${app.id}/edit`}
-                    className="rounded-lg border border-white/10 px-3 py-2 text-sm text-slate-300 hover:bg-white/10"
-                  >
-                    Edit
-                  </Link>
+                    return (
+                      <div key={item.status}>
+                        <div className="mb-2 flex items-center justify-between">
+                          <StatusBadge status={item.status} />
+                          <span className="text-sm font-medium text-slate-300">
+                            {item.count}
+                          </span>
+                        </div>
+
+                        <div className="h-3 overflow-hidden rounded-full bg-slate-950">
+                          <div
+                            className="h-full rounded-full bg-indigo-500"
+                            style={{ width: `${width}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
-            ))
-          )}
-        </div>
-      </section>
+
+              <div className="rounded-3xl border border-white/10 bg-slate-900/80 p-6 shadow-xl">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-indigo-300">
+                      Progress Summary
+                    </p>
+                    <h2 className="mt-2 text-xl font-semibold text-white">
+                      Quick insights
+                    </h2>
+                  </div>
+                  <TrendingUp className="text-indigo-300" size={26} />
+                </div>
+
+                <div className="mt-6 space-y-4">
+                  <InsightItem
+                    label="Applications sent"
+                    value={totalApplications}
+                  />
+                  <InsightItem label="Responses received" value={responses} />
+                  <InsightItem label="Interview opportunities" value={interviews} />
+                  <InsightItem label="Offers received" value={offers} />
+                </div>
+              </div>
+            </section>
+
+            <section className="grid gap-6 xl:grid-cols-2">
+              <div className="rounded-3xl border border-white/10 bg-slate-900/80 p-6 shadow-xl">
+                <h2 className="text-xl font-semibold text-white">
+                  Recent Applications
+                </h2>
+
+                <div className="mt-5 space-y-4">
+                  {recentApplications.length === 0 && (
+                    <p className="rounded-2xl border border-dashed border-white/10 bg-slate-950 p-5 text-sm text-slate-500">
+                      No applications yet. Add your first application.
+                    </p>
+                  )}
+
+                  {recentApplications.map((application) => (
+                    <div
+                      key={application.id}
+                      className="rounded-2xl border border-white/10 bg-slate-950 p-4"
+                    >
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <h3 className="font-semibold text-white">
+                            {application.role}
+                          </h3>
+                          <p className="mt-1 text-sm text-slate-400">
+                            {application.company}
+                          </p>
+                        </div>
+
+                        <StatusBadge status={application.status} />
+                      </div>
+
+                      <p className="mt-3 text-xs text-slate-500">
+                        Applied on {application.appliedDate}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-3xl border border-white/10 bg-slate-900/80 p-6 shadow-xl">
+                <h2 className="text-xl font-semibold text-white">
+                  Upcoming Reminders
+                </h2>
+
+                <div className="mt-5 space-y-4">
+                  {upcomingReminders.length === 0 && (
+                    <p className="rounded-2xl border border-dashed border-white/10 bg-slate-950 p-5 text-sm text-slate-500">
+                      No upcoming reminders.
+                    </p>
+                  )}
+
+                  {upcomingReminders.map((reminder) => (
+                    <div
+                      key={reminder.id}
+                      className="rounded-2xl border border-white/10 bg-slate-950 p-4"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <h3 className="font-semibold text-white">
+                            {reminder.title}
+                          </h3>
+                          <p className="mt-1 text-sm text-slate-400">
+                            {reminder.date}
+                          </p>
+                        </div>
+
+                        <span className="rounded-full bg-indigo-500/10 px-3 py-1 text-xs font-medium text-indigo-200">
+                          {reminder.type}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+          </>
+        )}
+      </div>
     </DashboardLayout>
   );
 }
@@ -292,61 +330,25 @@ function StatCard({
   description: string;
 }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-lg shadow-black/10">
-      <div className="mb-5 flex items-center justify-between">
-        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-500/20 text-indigo-300">
+    <div className="rounded-3xl border border-white/10 bg-slate-900/80 p-6 shadow-xl">
+      <div className="flex items-center justify-between">
+        <div className="rounded-2xl bg-indigo-500/10 p-3 text-indigo-300">
           {icon}
         </div>
-
-        <TrendingUp size={18} className="text-green-400" />
+        <span className="text-xs text-slate-500">{description}</span>
       </div>
 
-      <p className="text-sm text-slate-400">{title}</p>
-
-      <h2 className="mt-2 text-3xl font-bold">{value}</h2>
-
-      <p className="mt-2 text-sm text-slate-500">{description}</p>
+      <p className="mt-6 text-3xl font-bold text-white">{value}</p>
+      <p className="mt-2 text-sm text-slate-400">{title}</p>
     </div>
   );
 }
 
-function StatusProgress({
-  label,
-  value,
-  total,
-  color,
-}: {
-  label: string;
-  value: number;
-  total: number;
-  color: string;
-}) {
-  const percentage = total === 0 ? 0 : Math.round((value / total) * 100);
-
+function InsightItem({ label, value }: { label: string; value: number }) {
   return (
-    <div>
-      <div className="mb-2 flex items-center justify-between">
-        <span className="text-sm text-slate-300">{label}</span>
-
-        <span className="text-sm text-slate-400">
-          {value} / {total}
-        </span>
-      </div>
-
-      <div className="h-2 rounded-full bg-white/10">
-        <div
-          className={`h-2 rounded-full ${color}`}
-          style={{ width: `${percentage}%` }}
-        />
-      </div>
-    </div>
-  );
-}
-
-function EmptyState({ message }: { message: string }) {
-  return (
-    <div className="rounded-xl border border-white/10 bg-[#07111f] p-5 text-center">
-      <p className="text-sm text-slate-400">{message}</p>
+    <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-slate-950 px-4 py-3">
+      <span className="text-sm text-slate-400">{label}</span>
+      <span className="text-lg font-semibold text-white">{value}</span>
     </div>
   );
 }
