@@ -16,17 +16,20 @@ enum ApplicationStatus {
 }
 
 model Application {
-  id          Int               @id @default(autoincrement())
-  userId      String?
-  company     String
-  role        String
-  status      ApplicationStatus @default(Applied)
-  appliedDate DateTime          @default(now())
-  skills      String[]
-  jobLink     String?
-  notes       String?
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
+  id             Int               @id @default(autoincrement())
+  userId         String?
+  company        String
+  role           String
+  status         ApplicationStatus @default(Applied)
+  appliedDate    DateTime          @default(now())
+  skills         String[]
+  resumeUsed     String?
+  resumeFileName String?
+  resumeUrl      String?
+  jobLink        String?
+  notes          String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
 
   @@index([userId])
 }

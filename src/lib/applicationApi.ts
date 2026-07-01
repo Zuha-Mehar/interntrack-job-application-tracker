@@ -12,6 +12,9 @@ type ApplicationInput = {
   role: string;
   status: ApplicationStatus;
   skills: string[] | string;
+  resumeUsed?: string;
+  resumeFileName?: string;
+  resumeUrl?: string;
   jobLink?: string;
   notes?: string;
 };
@@ -48,12 +51,8 @@ async function readResponse<T>(response: Response): Promise<ApiResponse<T>> {
 }
 
 export async function getApplications(): Promise<JobApplication[]> {
-  const response = await fetch("/api/applications", {
-    cache: "no-store",
-  });
-
+  const response = await fetch("/api/applications", { cache: "no-store" });
   const result = await readResponse<JobApplication[]>(response);
-
   return result.data.map(normalizeApplication);
 }
 
@@ -69,7 +68,6 @@ export async function getApplicationById(
   }
 
   const result = await readResponse<JobApplication>(response);
-
   return normalizeApplication(result.data);
 }
 
@@ -78,14 +76,11 @@ export async function addApplication(
 ): Promise<JobApplication> {
   const response = await fetch("/api/applications", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(application),
   });
 
   const result = await readResponse<JobApplication>(response);
-
   return normalizeApplication(result.data);
 }
 
@@ -95,14 +90,11 @@ export async function updateApplication(
 ): Promise<JobApplication> {
   const response = await fetch(`/api/applications/${applicationId}`, {
     method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(updatedData),
   });
 
   const result = await readResponse<JobApplication>(response);
-
   return normalizeApplication(result.data);
 }
 
@@ -117,14 +109,6 @@ export async function deleteApplication(applicationId: number): Promise<void> {
 export async function clearApplications(): Promise<void> {
   const response = await fetch("/api/applications", {
     method: "DELETE",
-  });
-
-  await readResponse<unknown>(response);
-}
-
-export async function resetDemoApplications(): Promise<void> {
-  const response = await fetch("/api/applications/reset", {
-    method: "POST",
   });
 
   await readResponse<unknown>(response);

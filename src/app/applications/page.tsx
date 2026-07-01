@@ -5,7 +5,9 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Briefcase,
   Calendar,
+  Download,
   ExternalLink,
+  FileText,
   Pencil,
   Plus,
   Search,
@@ -14,6 +16,7 @@ import {
 import DashboardLayout from "../../components/DashboardLayout";
 import StatusBadge from "../../components/StatusBadge";
 import { deleteApplication, getApplications } from "../../lib/applicationApi";
+import { exportApplicationsToCsv } from "../../lib/csvExport";
 import type { ApplicationStatus, JobApplication } from "../../types";
 
 const statusOptions: ("All" | ApplicationStatus)[] = [
@@ -29,7 +32,7 @@ export default function ApplicationsPage() {
   const [applications, setApplications] = useState<JobApplication[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"All" | ApplicationStatus>(
-    "All"
+    "All",
   );
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -59,7 +62,9 @@ export default function ApplicationsPage() {
       const matchesSearch =
         application.company.toLowerCase().includes(searchText) ||
         application.role.toLowerCase().includes(searchText) ||
-        application.skills.join(" ").toLowerCase().includes(searchText);
+        application.status.toLowerCase().includes(searchText) ||
+        application.skills.join(" ").toLowerCase().includes(searchText) ||
+        (application.resumeUsed || "").toLowerCase().includes(searchText);
 
       const matchesStatus =
         statusFilter === "All" || application.status === statusFilter;
@@ -70,7 +75,7 @@ export default function ApplicationsPage() {
 
   async function handleDelete(applicationId: number) {
     const confirmDelete = window.confirm(
-      "Are you sure you want to delete this application?"
+      "Are you sure you want to delete this application?",
     );
 
     if (!confirmDelete) {
@@ -82,12 +87,16 @@ export default function ApplicationsPage() {
 
       setApplications((currentApplications) =>
         currentApplications.filter(
-          (application) => application.id !== applicationId
-        )
+          (application) => application.id !== applicationId,
+        ),
       );
     } catch {
       alert("Failed to delete application.");
     }
+  }
+
+  function handleExportCsv() {
+    exportApplicationsToCsv(filteredApplications);
   }
 
   return (
@@ -103,18 +112,28 @@ export default function ApplicationsPage() {
                 Track all job applications
               </h1>
               <p className="mt-3 max-w-2xl text-sm text-slate-400">
-                View, search, filter, edit, and delete your saved applications
-                from one place.
+                View, search, filter, edit, delete, and export your saved
+                applications from one place.
               </p>
             </div>
 
-            <Link
-              href="/applications/add"
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-indigo-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-400"
-            >
-              <Plus size={18} />
-              Add Application
-            </Link>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <button
+                onClick={handleExportCsv}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:bg-white/5"
+              >
+                <Download size={18} />
+                Export CSV
+              </button>
+
+              <Link
+                href="/applications/add"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-indigo-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-400"
+              >
+                <Plus size={18} />
+                Add Application
+              </Link>
+            </div>
           </div>
         </section>
 
@@ -127,7 +146,7 @@ export default function ApplicationsPage() {
               />
               <input
                 type="text"
-                placeholder="Search by company, role, or skill..."
+                placeholder="Search by company, role, skill, status, or resume used..."
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value)}
                 className="w-full rounded-2xl border border-white/10 bg-slate-950 py-3 pl-11 pr-4 text-sm text-white outline-none placeholder:text-slate-500 focus:border-indigo-500"
@@ -202,6 +221,15 @@ export default function ApplicationsPage() {
                       Applied on {application.appliedDate}
                     </p>
 
+                    {application.resumeUsed && (
+                      <p className="text-sm text-slate-400">
+                        Resume Used:{" "}
+                        <span className="font-medium text-indigo-300">
+                          {application.resumeUsed}
+                        </span>
+                      </p>
+                    )}
+
                     <div className="flex flex-wrap gap-2">
                       {application.skills.map((skill) => (
                         <span
@@ -217,6 +245,18 @@ export default function ApplicationsPage() {
                       <p className="max-w-3xl text-sm text-slate-400">
                         {application.notes}
                       </p>
+                    )}
+
+                    {application.resumeUrl && (
+                      <a
+                        href={`/api/applications/${application.id}/resume`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-2 text-sm font-medium text-emerald-300 hover:text-emerald-200"
+                      >
+                        <FileText size={16} />
+                        View resume PDF
+                      </a>
                     )}
 
                     {application.jobLink && (

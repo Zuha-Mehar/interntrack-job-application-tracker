@@ -12,12 +12,14 @@ export type JobApplication = {
   status: ApplicationStatus;
   appliedDate: string;
   skills: string[];
+  resumeUsed?: string;
+  resumeFileName?: string;
+  resumeUrl?: string;
   jobLink?: string;
   notes?: string;
 };
 
 export type ReminderStatus = "Upcoming" | "Completed";
-
 export type ReminderType = "Interview" | "Follow-up" | "Deadline";
 
 export type Reminder = {
@@ -28,9 +30,10 @@ export type Reminder = {
   status: ReminderStatus;
 };
 
-export type UserProfile={
-  name:string;
-  email:string;
-  role:string;
-  location:string;
+export type UserProfile = {
+  name: string;
+  email: string;
+  role: string;
+  location: string;
 };
+

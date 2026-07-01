@@ -1,11 +1,20 @@
+import { auth } from "@clerk/nextjs/server";
 import { prisma } from "../../../lib/prisma";
 
 export async function GET() {
   try {
+    const { userId } = await auth();
+
+    if (!userId) {
+      return Response.json(
+        { success: false, message: "Unauthorized", data: [] },
+        { status: 401 }
+      );
+    }
+
     const applications = await prisma.application.findMany({
-      orderBy: {
-        createdAt: "desc",
-      },
+      where: { userId },
+      orderBy: { createdAt: "desc" },
     });
 
     return Response.json({
@@ -27,6 +36,15 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const { userId } = await auth();
+
+    if (!userId) {
+      return Response.json(
+        { success: false, message: "Unauthorized", data: null },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
 
     const skills =
@@ -39,10 +57,14 @@ export async function POST(request: Request) {
 
     const newApplication = await prisma.application.create({
       data: {
+        userId,
         company: body.company,
         role: body.role,
         status: body.status || "Applied",
         skills: skills || [],
+        resumeUsed: body.resumeUsed || null,
+        resumeFileName: body.resumeFileName || null,
+        resumeUrl: body.resumeUrl || null,
         jobLink: body.jobLink || null,
         notes: body.notes || null,
       },
@@ -70,7 +92,18 @@ export async function POST(request: Request) {
 
 export async function DELETE() {
   try {
-    await prisma.application.deleteMany();
+    const { userId } = await auth();
+
+    if (!userId) {
+      return Response.json(
+        { success: false, message: "Unauthorized", data: null },
+        { status: 401 }
+      );
+    }
+
+    await prisma.application.deleteMany({
+      where: { userId },
+    });
 
     return Response.json({
       success: true,

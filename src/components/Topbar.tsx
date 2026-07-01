@@ -2,19 +2,20 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Menu, Search, UserCircle, X } from "lucide-react";
+import { UserButton, useUser } from "@clerk/nextjs";
+import { Loader2, Menu, Search, X } from "lucide-react";
 import StatusBadge from "./StatusBadge";
 import { getApplications } from "../lib/applicationApi";
-import { getProfile } from "../lib/profileStorage";
-import type { JobApplication, UserProfile } from "../types";
+import type { JobApplication } from "../types";
 
 type TopbarProps = {
   onMenuClick: () => void;
 };
 
 export default function Topbar({ onMenuClick }: TopbarProps) {
+  const { user } = useUser();
+
   const [applications, setApplications] = useState<JobApplication[]>([]);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -33,7 +34,6 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
   }
 
   useEffect(() => {
-    setProfile(getProfile());
     loadApplications();
   }, []);
 
@@ -58,8 +58,13 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
       .slice(0, 6);
   }, [applications, searchTerm]);
 
-  const shouldShowDropdown =
-    isSearchFocused && searchTerm.trim().length > 0;
+  const shouldShowDropdown = isSearchFocused && searchTerm.trim().length > 0;
+
+  const displayName =
+    user?.firstName ||
+    user?.fullName ||
+    user?.primaryEmailAddress?.emailAddress ||
+    "User";
 
   return (
     <header className="sticky top-0 z-30 border-b border-white/10 bg-slate-950/80 backdrop-blur-xl">
@@ -159,16 +164,14 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
 
         <div className="flex items-center gap-3">
           <div className="hidden text-right sm:block">
-            <p className="text-sm font-medium text-white">
-              {profile?.name || "User"}
-            </p>
+            <p className="text-sm font-medium text-white">{displayName}</p>
             <p className="text-xs text-slate-500">
-              {profile?.role || "Job Seeker"}
+              {user?.primaryEmailAddress?.emailAddress || "Signed in"}
             </p>
           </div>
 
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-slate-900 text-indigo-300">
-            <UserCircle size={24} />
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-slate-900">
+            <UserButton />
           </div>
         </div>
       </div>

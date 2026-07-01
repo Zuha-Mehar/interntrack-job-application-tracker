@@ -3,10 +3,7 @@
 import DashboardLayout from "../../components/DashboardLayout";
 import { getProfile, saveProfile } from "../../lib/profileStorage";
 import type { UserProfile } from "../../types";
-import {
-  clearApplications,
-  resetDemoApplications,
-} from "../../lib/applicationApi";
+import { clearApplications } from "../../lib/applicationApi";
 import {
   Globe,
   Mail,
@@ -49,24 +46,6 @@ export default function SettingsPage() {
 
     saveProfile(profile);
     alert("Profile saved successfully!");
-  }
-
-  async function handleResetDemoData() {
-    const confirmReset = window.confirm(
-      "This will replace all current database applications with demo applications. Continue?",
-    );
-
-    if (!confirmReset) {
-      return;
-    }
-
-    try {
-      await resetDemoApplications();
-      alert("Demo applications reset successfully.");
-      window.location.reload();
-    } catch {
-      alert("Failed to reset demo applications.");
-    }
   }
 
   async function handleClearAllData() {
@@ -206,15 +185,6 @@ export default function SettingsPage() {
             </p>
 
             <div className="mt-5 flex flex-wrap gap-4">
-              <button
-                type="button"
-                onClick={handleResetDemoData}
-                className="flex items-center gap-2 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-5 py-3 text-sm font-medium text-yellow-300 hover:bg-yellow-500/20"
-              >
-                <RotateCcw size={18} />
-                Reset Demo Data
-              </button>
-
               <button
                 type="button"
                 onClick={handleClearAllData}
