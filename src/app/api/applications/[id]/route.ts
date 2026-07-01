@@ -1,4 +1,5 @@
 import { auth } from "@clerk/nextjs/server";
+import { del } from "@vercel/blob";
 import { prisma } from "../../../../lib/prisma";
 import type { ApplicationStatus } from "../../../../types";
 
@@ -35,12 +36,24 @@ function normalizeSkills(skills: unknown) {
   }
 
   if (Array.isArray(skills)) {
-    return skills
-      .map((skill) => String(skill).trim())
-      .filter(Boolean);
+    return skills.map((skill) => String(skill).trim()).filter(Boolean);
   }
 
   return undefined;
+}
+
+async function deleteResumeFromBlob(resumeUrl: string | null) {
+  if (!resumeUrl) {
+    return;
+  }
+
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    throw new Error("BLOB_READ_WRITE_TOKEN is missing.");
+  }
+
+  await del(resumeUrl, {
+    token: process.env.BLOB_READ_WRITE_TOKEN,
+  });
 }
 
 export async function GET(_request: Request, context: RouteContext) {
@@ -145,7 +158,18 @@ export async function PATCH(request: Request, context: RouteContext) {
       status = body.status;
     }
 
-    const skills = body.skills !== undefined ? normalizeSkills(body.skills) : undefined;
+    const skills =
+      body.skills !== undefined ? normalizeSkills(body.skills) : undefined;
+
+    const isReplacingResume =
+      body.resumeUrl !== undefined &&
+      body.resumeUrl &&
+      existingApplication.resumeUrl &&
+      body.resumeUrl !== existingApplication.resumeUrl;
+
+    if (isReplacingResume) {
+      await deleteResumeFromBlob(existingApplication.resumeUrl);
+    }
 
     const updatedApplication = await prisma.application.update({
       where: {
@@ -212,23 +236,31 @@ export async function DELETE(_request: Request, context: RouteContext) {
       );
     }
 
-    const deletedApplication = await prisma.application.deleteMany({
+    const existingApplication = await prisma.application.findFirst({
       where: {
         id: applicationId,
         userId,
       },
     });
 
-    if (deletedApplication.count === 0) {
+    if (!existingApplication) {
       return Response.json(
         { success: false, message: "Application not found", data: null },
         { status: 404 }
       );
     }
 
+    await deleteResumeFromBlob(existingApplication.resumeUrl);
+
+    await prisma.application.delete({
+      where: {
+        id: applicationId,
+      },
+    });
+
     return Response.json({
       success: true,
-      message: "Application deleted successfully",
+      message: "Application and resume deleted successfully",
       data: null,
     });
   } catch (error) {

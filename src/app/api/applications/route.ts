@@ -1,4 +1,5 @@
 import { auth } from "@clerk/nextjs/server";
+import { del } from "@vercel/blob";
 import { prisma } from "../../../lib/prisma";
 
 export async function GET() {
@@ -101,13 +102,34 @@ export async function DELETE() {
       );
     }
 
+    const userApplications = await prisma.application.findMany({
+      where: { userId },
+      select: {
+        resumeUrl: true,
+      },
+    });
+
+    const resumeUrls = userApplications
+      .map((application) => application.resumeUrl)
+      .filter((resumeUrl): resumeUrl is string => Boolean(resumeUrl));
+
+    if (resumeUrls.length > 0) {
+      if (!process.env.BLOB_READ_WRITE_TOKEN) {
+        throw new Error("BLOB_READ_WRITE_TOKEN is missing.");
+      }
+
+      await del(resumeUrls, {
+        token: process.env.BLOB_READ_WRITE_TOKEN,
+      });
+    }
+
     await prisma.application.deleteMany({
       where: { userId },
     });
 
     return Response.json({
       success: true,
-      message: "All applications deleted successfully",
+      message: "All applications and resumes deleted successfully",
       data: null,
     });
   } catch (error) {
