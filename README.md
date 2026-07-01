@@ -1,76 +1,128 @@
-## Live Demo
-
-[View InternTrack Live] 
-https://interntrack-job-application-tracker.vercel.app/
-
 # InternTrack – Smart Job Application Tracker
 
-InternTrack is a modern job and internship application tracker built with Next.js, TypeScript, and Tailwind CSS. It helps users organize applications, track interview progress, manage reminders, analyze skills, and view job search performance through a clean dashboard.
+InternTrack is a full-stack job application tracking platform that helps users manage internships and job applications in one organized dashboard.
+
+Users can track applications, update statuses, manage which resume was used for each company, upload secure resume PDFs, view analytics, export CSV data, and organize their job search process efficiently.
+
+## Live Demo
+
+```text
+https://interntrack-job-application-tracker.vercel.app
+```
+
+## GitHub Repository
+
+```text
+https://github.com/Zuha-Mehar/interntrack-job-application-tracker
+```
 
 ## Features
 
-* Landing page with modern SaaS-style UI
-* Dashboard with application stats and reminders
-* Add, edit, and delete job applications
-* Kanban board for tracking application status
-* Reminders for interviews, follow-ups, and deadlines
-* Skills insights based on saved applications
-* Analytics dashboard with response, interview, and offer rates
-* Profile/settings page with local saved profile data
-* Global application search
-* Responsive sidebar for mobile and desktop
-* Custom 404 page, loading page, favicon, and metadata
+- User authentication with Clerk
+- User-specific job application data
+- Add, edit, delete, and manage applications
+- Track application status:
+  - Applied
+  - Shortlisted
+  - Interview
+  - Offer
+  - Rejected
+- Kanban-style application tracking
+- Resume Used field for each company
+- Secure resume PDF upload using Vercel Blob
+- Private resume PDF viewing through authenticated API routes
+- Delete resume PDFs when applications are removed
+- Dashboard statistics
+- Skill insights from applications
+- Reminders for interviews, deadlines, and follow-ups
+- Global application search
+- CSV export with resume details
+- Responsive dark UI
 
 ## Tech Stack
 
-* Next.js
-* TypeScript
-* React
-* Tailwind CSS
-* Lucide React Icons
-* LocalStorage for temporary data persistence
+### Frontend
 
-## Pages
+- Next.js
+- React.js
+- TypeScript
+- Tailwind CSS
+- Lucide React
 
-* `/` – Landing page
-* `/dashboard` – Main dashboard
-* `/applications` – Applications list
-* `/applications/add` – Add application form
-* `/applications/[id]/edit` – Edit application form
-* `/kanban` – Kanban board
-* `/reminders` – Reminders page
-* `/skills` – Skill insights
-* `/analytics` – Analytics dashboard
-* `/settings` – Profile and settings page
+### Backend
 
-## How to Run Locally
+- Next.js API Routes
+- Prisma ORM
+- PostgreSQL
+- Neon Database
 
-```bash
-npm install
-npm run dev
-```
+### Authentication
 
-Open the app in your browser:
+- Clerk
 
-```text
-http://localhost:3000
-```
+### File Storage
 
-## Project Purpose
+- Vercel Blob
 
-This project was built as a resume-worthy full-stack-ready frontend project for students and freshers who want to track their internship or job search process in an organized way.
+### Deployment
+
+- Vercel
+
+## Main Pages
+
+- Landing Page
+- Sign In
+- Sign Up
+- Dashboard
+- Applications
+- Add Application
+- Edit Application
+- Kanban Board
+- Reminders
+- Skills
+- Analytics
+- Settings
+
+## Database Model
+
+The main `Application` model stores:
+
+- Company name
+- Role
+- Status
+- Applied date
+- Skills
+- Resume used
+- Resume file name
+- Resume PDF URL
+- Job link
+- Notes
+- User ID
+
+## Project Highlights
+
+- Built a real full-stack application using Next.js, TypeScript, PostgreSQL, Prisma, Clerk, and Vercel Blob.
+- Implemented authentication and user-specific data so each user can manage their own applications privately.
+- Added secure resume PDF uploads with private Blob storage and authenticated resume viewing.
+- Created CRUD operations, protected API routes, CSV export, search, analytics, skill insights, and responsive UI.
+- Removed demo data so the deployed app works like a real production-ready job tracker.
+
+## Why I Built This
+
+As a Computer Science graduate applying for internships and entry-level roles, I wanted to build a practical project that solves a real problem: keeping track of job applications, resumes, interview status, and follow-ups in one place.
+
+This project demonstrates full-stack development, authentication, database management, secure file uploads, API route handling, and responsive UI design.
 
 ## Future Improvements
 
-* Add backend API routes
-* Add PostgreSQL database
-* Add Prisma ORM
-* Add authentication
-* Add drag-and-drop Kanban functionality
-* Add email reminders
-* Add CSV export
-* Deploy on Vercel
+- Drag-and-drop Kanban cards
+- Email reminders
+- AI-based resume matching
+- Job description skill extraction
+- Interview preparation notes
+- Application success rate insights
+- Resume version management
 
-## Resume Description
+## Author
 
-Built InternTrack, a smart job application tracker using Next.js, TypeScript, and Tailwind CSS. Implemented application CRUD operations, Kanban status tracking, reminders, analytics, skill insights, profile settings, global search, responsive UI, and localStorage-based data persistence.
+Built by Zuha Mehar.
